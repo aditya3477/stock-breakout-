@@ -6,21 +6,24 @@ def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_th
     # Fetch historical data
     stock_data = yf.download(ticker, start=start_date, end=end_date)
     
-    # Ensure data was fetched correctly
+    # Debug: Print the raw data to ensure it's fetched
     if stock_data.empty:
         raise ValueError(f"No data available for ticker {ticker} in the specified date range.")
+    print(stock_data.head())  # Debugging raw data
+
+    # Ensure 'Volume' column exists
+    if 'Volume' not in stock_data.columns:
+        raise KeyError("'Volume' column is missing in the data. Check the data source or ticker.")
     
     # Calculate rolling average
     stock_data['20d_avg_volume'] = stock_data['Volume'].rolling(window=20).mean()
     
-    # Debugging step to verify column creation
-    print(stock_data.columns)
-    
-    # Ensure the column exists before dropping NaN
+    # Debug: Confirm if the column is created
     if '20d_avg_volume' not in stock_data.columns:
-        raise KeyError("Column '20d_avg_volume' was not created successfully.")
-    
-    # Drop rows with NaN values caused by rolling calculation
+        raise KeyError("Failed to create '20d_avg_volume' column. Check the rolling calculation logic.")
+    print(stock_data[['Volume', '20d_avg_volume']].tail())  # Debugging rolling average
+
+    # Drop rows with NaN values caused by the rolling calculation
     stock_data = stock_data.dropna(subset=['20d_avg_volume'])
     
     # Identify breakout days
@@ -44,6 +47,7 @@ def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_th
     # Convert results to DataFrame
     results_df = pd.DataFrame(results, columns=['Buy Date', 'Buy Price', 'Sell Price', 'Return (%)'])
     return results_df
+
 
 
 
