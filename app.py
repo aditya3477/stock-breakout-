@@ -7,6 +7,9 @@ def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_th
     stock_data = yf.download(ticker, start=start_date, end=end_date)
     stock_data['20d_avg_volume'] = stock_data['Volume'].rolling(window=20).mean()
     
+    # Drop rows with NaN values caused by rolling calculation
+    stock_data = stock_data.dropna(subset=['20d_avg_volume'])
+    
     # Identify breakout days
     stock_data['Volume_Breakout'] = stock_data['Volume'] > (stock_data['20d_avg_volume'] * (volume_threshold / 100))
     stock_data['Price_Change'] = stock_data['Close'].pct_change() * 100
@@ -17,15 +20,19 @@ def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_th
     results = []
     for date, row in stock_data[stock_data['Breakout']].iterrows():
         buy_price = row['Close']
-        sell_date = stock_data.index[stock_data.index.get_loc(date) + holding_period]
-        if sell_date in stock_data.index:
+        try:
+            sell_date = stock_data.index[stock_data.index.get_loc(date) + holding_period]
             sell_price = stock_data.loc[sell_date, 'Close']
             return_pct = ((sell_price - buy_price) / buy_price) * 100
             results.append((date, buy_price, sell_price, return_pct))
+        except (IndexError, KeyError):
+            # Handle cases where sell date is out of range
+            continue
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(results, columns=['Buy Date', 'Buy Price', 'Sell Price', 'Return (%)'])
     return results_df
+
 
 # Streamlit UI
 st.title("Stock Breakout Analyzer")
