@@ -5,7 +5,20 @@ import streamlit as st
 def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_threshold, holding_period):
     # Fetch historical data
     stock_data = yf.download(ticker, start=start_date, end=end_date)
+    
+    # Ensure data was fetched correctly
+    if stock_data.empty:
+        raise ValueError(f"No data available for ticker {ticker} in the specified date range.")
+    
+    # Calculate rolling average
     stock_data['20d_avg_volume'] = stock_data['Volume'].rolling(window=20).mean()
+    
+    # Debugging step to verify column creation
+    print(stock_data.columns)
+    
+    # Ensure the column exists before dropping NaN
+    if '20d_avg_volume' not in stock_data.columns:
+        raise KeyError("Column '20d_avg_volume' was not created successfully.")
     
     # Drop rows with NaN values caused by rolling calculation
     stock_data = stock_data.dropna(subset=['20d_avg_volume'])
@@ -26,12 +39,12 @@ def calculate_breakouts(ticker, start_date, end_date, volume_threshold, price_th
             return_pct = ((sell_price - buy_price) / buy_price) * 100
             results.append((date, buy_price, sell_price, return_pct))
         except (IndexError, KeyError):
-            # Handle cases where sell date is out of range
             continue
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(results, columns=['Buy Date', 'Buy Price', 'Sell Price', 'Return (%)'])
     return results_df
+
 
 
 # Streamlit UI
